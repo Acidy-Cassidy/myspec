@@ -100,7 +100,15 @@ void ESpectreComponent::on_wifi_connected_() {
 
         if (!this->threshold_republished_ && this->threshold_number_ != nullptr) {
           auto *threshold_num = static_cast<ESpectreThresholdNumber *>(this->threshold_number_);
-          threshold_num->republish_state();
+          float saved = threshold_num->state;
+          if (std::isnan(saved) || saved <= 0.0f) {
+            threshold_num->publish_state(this->segmentation_threshold_);
+            this->csi_manager_.set_threshold(this->segmentation_threshold_);
+          } else {
+            threshold_num->republish_state();
+            this->segmentation_threshold_ = saved;
+            this->csi_manager_.set_threshold(saved);
+          }
           this->threshold_republished_ = true;
         }
 
