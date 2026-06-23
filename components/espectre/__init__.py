@@ -167,7 +167,7 @@ async def to_code(config):
         config[CONF_THRESHOLD_NUMBER],
         min_value=THRESHOLD_MIN,
         max_value=THRESHOLD_MAX,
-        step=0.1,
+        step=0.001,
     )
     cg.add(num.set_parent(var))
     cg.add(var.set_threshold_number(num))
