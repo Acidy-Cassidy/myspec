@@ -74,7 +74,7 @@ CONFIG_SCHEMA = cv.Schema({
     cv.Optional(CONF_SEGMENTATION_THRESHOLD, default="auto"): validate_segmentation_threshold,
     cv.Optional(CONF_SEGMENTATION_WINDOW_SIZE, default=100): cv.int_range(min=10, max=200),
     cv.Optional(CONF_GAIN_LOCK, default="auto"): cv.one_of("auto", "enabled", "disabled", lower=True),
-    cv.Optional(CONF_PUBLISH_INTERVAL): cv.int_range(min=1, max=1000),
+    cv.Optional(CONF_PUBLISH_INTERVAL, default=100): cv.int_range(min=1, max=1000),
     cv.Optional(CONF_EVALUATION_INTERVAL, default=25): cv.int_range(min=1, max=1000),
     cv.Optional(CONF_MOTION_ON_HITS, default=3): cv.int_range(min=1, max=20),
     cv.Optional(CONF_MOTION_OFF_HITS, default=3): cv.int_range(min=1, max=20),
@@ -106,14 +106,6 @@ CONFIG_SCHEMA = cv.Schema({
     ),
 }).extend(cv.COMPONENT_SCHEMA)
 
-
-def _compute_publish_interval(config):
-    if CONF_PUBLISH_INTERVAL not in config or config[CONF_PUBLISH_INTERVAL] is None:
-        config[CONF_PUBLISH_INTERVAL] = 100
-    return config
-
-
-FINAL_VALIDATE_SCHEMA = cv.All(_compute_publish_interval)
 
 
 async def to_code(config):
