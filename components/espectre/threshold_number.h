@@ -10,6 +10,7 @@
 #pragma once
 
 #include "esphome/core/component.h"
+#include "esphome/core/preferences.h"
 #include "esphome/components/number/number.h"
 
 namespace esphome {
@@ -33,6 +34,7 @@ class ESpectreThresholdNumber : public number::Number, public Component {
   void control(float value) override;
   
   ESpectreComponent *parent_{nullptr};
+  ESPPreferenceObject pref_;
 };
 
 }  // namespace espectre
