@@ -138,19 +138,8 @@ void CSIManager::process_packet(wifi_csi_info_t* data) {
   
   // Process gain calibration
   if (!gain_controller_.is_locked()) {
-    // Hard timeout: if gain hasn't locked after 300 packets in AUTO mode, force-lock by
-    // continuing packet processing anyway, preventing an indefinite calibration stall.
-    if (gain_controller_.get_packet_count() >= GainController::CALIBRATION_PACKETS) {
-      static bool auto_force_lock_logged = false;
-      if (!auto_force_lock_logged) {
-        ESP_LOGW(TAG, "Gain lock AUTO forced after 300 packets");
-        auto_force_lock_logged = true;
-      }
-      // Fall through: treat gain as locked and process the packet normally.
-    } else {
-      gain_controller_.process_packet(data);
-      return;
-    }
+    gain_controller_.process_packet(data);
+    return;
   }
   
   // STBC workaround (GitHub issue #76, #93, espressif/esp-csi#238):
