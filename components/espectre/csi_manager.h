@@ -17,6 +17,7 @@
 #include "base_detector.h"
 #include "wifi_csi_interface.h"
 #include "gain_controller.h"
+#include <atomic>
 #include <functional>
 
 namespace esphome {
@@ -173,8 +174,8 @@ class CSIManager {
   game_mode_callback_t game_mode_callback_;
   uint32_t publish_rate_{100};
   uint32_t evaluation_interval_{25};
-  volatile uint32_t packets_processed_{0};
-  volatile uint32_t packets_filtered_{0};
+  std::atomic<uint32_t> packets_processed_{0};
+  std::atomic<uint32_t> packets_filtered_{0};
   uint32_t packets_since_evaluation_{0};
   uint32_t packets_total_{0};
   uint8_t current_channel_{0};
