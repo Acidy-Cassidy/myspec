@@ -19,6 +19,15 @@ void ESpectreThresholdNumber::setup() {
   // Calling publish_state() too early (before API/WiFi is connected) can cause
   // crashes or "unknown" state in Home Assistant.
   // The parent calls republish_state() on first sensor update (after API is connected).
+  this->pref_ = global_preferences->make_preference<float>(
+      this->get_object_id_hash() ^ 0x45678abc);
+  float loaded = 0.0f;
+  if (this->pref_.load(&loaded) && loaded > 0.001f) {
+      this->publish_state(loaded);
+      if (this->parent_ != nullptr)
+          this->parent_->set_threshold_runtime(loaded);
+      ESP_LOGI(TAG_THRESHOLD, "Threshold restored: %.4f", loaded);
+  }
 }
 
 void ESpectreThresholdNumber::dump_config() {
@@ -27,6 +36,8 @@ void ESpectreThresholdNumber::dump_config() {
 
 void ESpectreThresholdNumber::control(float value) {
   // Called when user changes value from HA
+  // Save to NVS flash so the value survives reboots
+  this->pref_.save(&value);
   // set_threshold_runtime handles everything: update, save, and publish
   if (this->parent_ != nullptr) {
     this->parent_->set_threshold_runtime(value);
