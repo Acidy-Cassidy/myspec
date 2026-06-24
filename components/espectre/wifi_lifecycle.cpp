@@ -269,11 +269,20 @@ void WiFiLifecycleManager::ip_event_handler_(void* arg, esp_event_base_t event_b
   if (event_id == IP_EVENT_STA_GOT_IP) {
     ESP_LOGD(TAG, "WiFi connected");
     
+    // Disable WiFi power save to maximize CSI packet rate (QW-1)
+    // AP buffering caused by PS reduces CSI delivery rate and motion detection quality
+    esp_err_t ps_set_err = esp_wifi_set_ps(WIFI_PS_NONE);
+    if (ps_set_err == ESP_OK) {
+      ESP_LOGI(TAG, "WiFi PS disabled");
+    } else {
+      ESP_LOGW(TAG, "Failed to disable WiFi PS: %s", esp_err_to_name(ps_set_err));
+    }
+
     // Log current WiFi parameters for debugging
     bool promiscuous = false;
     esp_wifi_get_promiscuous(&promiscuous);
     ESP_LOGD(TAG, "WiFi Promiscuous mode: %s", promiscuous ? "ENABLED" : "DISABLED");
-    
+
     wifi_ps_type_t ps_type;
     esp_err_t ps_err = esp_wifi_get_ps(&ps_type);
     if (ps_err == ESP_OK) {
