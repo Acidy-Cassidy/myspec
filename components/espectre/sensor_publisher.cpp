@@ -56,14 +56,17 @@ void SensorPublisher::log_status(const char *tag,
   }
   last_log_time_ms_ = now_ms;
   
-  // Get WiFi info for diagnostics
-  wifi_ap_record_t ap_info;
-  int8_t rssi = -127;
-  uint8_t channel = 0;
-  if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
-    rssi = ap_info.rssi;
-    channel = ap_info.primary;
+  // Get WiFi info for diagnostics (OPT-3: cache RSSI, query at most every 50 calls)
+  rssi_update_counter_++;
+  if (rssi_update_counter_ % 50 == 1) {
+    wifi_ap_record_t ap_info;
+    if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
+      cached_rssi_ = ap_info.rssi;
+      cached_channel_ = ap_info.primary;
+    }
   }
+  int8_t rssi = cached_rssi_;
+  uint8_t channel = cached_channel_;
   
   // Calculate progress
   float progress = (threshold > 0) ? (motion_metric / threshold) : 0.0f;
