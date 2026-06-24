@@ -72,6 +72,10 @@ class SensorPublisher {
   sensor::Sensor *movement_sensor_{nullptr};
   binary_sensor::BinarySensor *motion_binary_sensor_{nullptr};
   uint32_t last_log_time_ms_{0};
+  // OPT-3: RSSI cache — avoid calling esp_wifi_sta_get_ap_info() every publish cycle
+  uint32_t rssi_update_counter_{0};
+  int8_t cached_rssi_{-70};
+  uint8_t cached_channel_{0};
 };
 
 }  // namespace espectre
