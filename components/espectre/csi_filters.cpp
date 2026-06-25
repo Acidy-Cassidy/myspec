@@ -124,13 +124,16 @@ float hampel_filter(const float *window, size_t window_size,
     }
     float mad = calculate_median_float(abs_deviations, window_size);
     
+    if (mad <= 0.0f) {
+        return current_value;  // Bug 1.7: MAD > 0 check
+    }
     float mad_scaled = MAD_SCALE_FACTOR * mad;
     float deviation = std::abs(current_value - median);
-    
+
     if (deviation > threshold * mad_scaled) {
         return median;
     }
-    
+
     return current_value;
 }
 
@@ -158,12 +161,15 @@ float hampel_filter_turbulence(hampel_turbulence_state_t *state, float turbulenc
     }
     float mad = calculate_median_float(state->deviations, n);
     
+    if (mad <= 0.0f) {
+        return turbulence;  // Bug 1.7: MAD > 0 check
+    }
     float deviation = std::abs(turbulence - median);
-    
+
     if (deviation > state->threshold * MAD_SCALE_FACTOR * mad) {
         return median;
     }
-    
+
     return turbulence;
 }
 
