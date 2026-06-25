@@ -428,14 +428,18 @@ esp_err_t NBVICalibrator::find_candidate_windows_(std::vector<WindowVariance>& c
     variances.push_back(w.variance);
   }
   float p_threshold = calculate_percentile(variances, percentile_);
-  
+  if (!std::isfinite(p_threshold)) {
+    p_threshold = calculate_mean(variances.data(), variances.size());  // Bug 1.6: Fallback to mean
+  }
+
   // Select windows below threshold
+  const float EPSILON = 1e-6f;  // Bug 1.11: Epsilon tolerance for comparison
   for (const auto& w : all_windows) {
-    if (w.variance <= p_threshold) {
+    if (w.variance <= p_threshold + EPSILON) {
       candidates.push_back(w);
     }
   }
-  
+
   return ESP_OK;
 }
 
@@ -685,11 +689,8 @@ bool NBVICalibrator::validate_subcarriers_(const uint8_t* band, uint8_t band_siz
         continue;
       }
 
-      float mean = running_sum / mvs_window_size_;
-      float variance = (running_sum_sq / mvs_window_size_) - (mean * mean);
-      if (variance < 0.0f) {
-        variance = 0.0f;
-      }
+      // Bug 1.4: Use stable two-pass variance instead of naive E[X²] - E[X]²
+      float variance = calculate_variance_two_pass(turbulence_ring.data(), mvs_window_size_);
       out_mv_values.push_back(variance);
     }
   }
@@ -735,14 +736,14 @@ void NBVICalibrator::calculate_nbvi_weighted_(const std::vector<float>& magnitud
     out_metrics.entropy = 0.0f;
     return;
   }
-  
+
   float sum = 0.0f;
   for (float mag : magnitudes) {
     sum += mag;
   }
   float mean = sum / count;
-  
-  if (mean < 1e-6f) {
+
+  if (mean < 1e-3f) {  // Bug 1.3: Raise threshold to prevent underflow
     out_metrics.nbvi = std::numeric_limits<float>::infinity();
     out_metrics.nbvi_classic = std::numeric_limits<float>::infinity();
     out_metrics.nbvi_entropy = std::numeric_limits<float>::infinity();
