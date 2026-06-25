@@ -66,7 +66,7 @@ inline uint8_t calculate_median_u8(uint8_t* arr, size_t size) {
     if (size == 0 || !arr) return 0;
     std::sort(arr, arr + size);
     if (size % 2 == 0) {
-        return (arr[size / 2 - 1] + arr[size / 2]) / 2;
+        return (static_cast<uint16_t>(arr[size / 2 - 1]) + arr[size / 2]) / 2;  // Bug 1.9: Cast to uint16_t
     }
     return arr[size / 2];
 }
@@ -82,7 +82,7 @@ inline int8_t calculate_median_i8(int8_t* arr, size_t size) {
     if (size == 0 || !arr) return 0;
     std::sort(arr, arr + size);
     if (size % 2 == 0) {
-        return (arr[size / 2 - 1] + arr[size / 2]) / 2;
+        return (static_cast<int16_t>(arr[size / 2 - 1]) + arr[size / 2]) / 2;  // Bug 1.9: Cast to int16_t
     }
     return arr[size / 2];
 }
@@ -100,6 +100,7 @@ inline int8_t calculate_median_i8(int8_t* arr, size_t size) {
  */
 inline float apply_cv_normalization(float std_dev, float mean, bool use_cv) {
     if (!use_cv) return std_dev;
+    if (!std::isfinite(std_dev) || !std::isfinite(mean)) return 0.0f;  // Bug 1.1: NaN/Inf check
     return (mean > 0.0f) ? std_dev / mean : 0.0f;
 }
 
@@ -114,10 +115,13 @@ inline float apply_cv_normalization(float std_dev, float mean, bool use_cv) {
  * @param use_cv true = CV normalization, false = raw std
  * @return Turbulence value
  */
-inline float calculate_turbulence_from_variance(float variance, 
-                                                 const float* values, 
+inline float calculate_turbulence_from_variance(float variance,
+                                                 const float* values,
                                                  size_t count,
                                                  bool use_cv) {
+    if (!std::isfinite(variance) || variance < 0.0f) {
+        return 0.0f;  // Bug 1.2: Validation before sqrt()
+    }
     float std_dev = std::sqrt(variance);
     if (!use_cv) return std_dev;
     float mean = calculate_mean(values, count);
@@ -191,14 +195,14 @@ inline float calculate_variance_two_pass(const float *values, size_t n) {
     if (n == 0 || !values) {
         return 0.0f;
     }
-    
+
     // First pass: calculate mean
     float mean = 0.0f;
     for (size_t i = 0; i < n; i++) {
         mean += values[i];
     }
     mean /= n;
-    
+
     // Second pass: calculate variance
     float variance = 0.0f;
     for (size_t i = 0; i < n; i++) {
@@ -206,7 +210,10 @@ inline float calculate_variance_two_pass(const float *values, size_t n) {
         variance += diff * diff;
     }
     variance /= n;
-    
+
+    if (!std::isfinite(variance) || variance < 0.0f) {
+        return 0.0f;  // Bug 1.10: Validate two-pass result
+    }
     return variance;
 }
 
@@ -220,6 +227,9 @@ inline float calculate_variance_two_pass(const float *values, size_t n) {
 inline float calculate_magnitude(int8_t i, int8_t q) {
     float fi = static_cast<float>(i);
     float fq = static_cast<float>(q);
+    if (!std::isfinite(fi) || !std::isfinite(fq)) {
+        return 0.0f;  // Bug 1.5: NaN/Inf check on I/Q
+    }
     return std::sqrt(fi * fi + fq * fq);
 }
 
