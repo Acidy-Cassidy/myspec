@@ -1,0 +1,703 @@
+<!-- ESPectre Motion Monitor Dashboard -->
+<title>ESPectre — Motion Monitor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --ground:     #0e0c0b;
+  --surface:    #1a1410;
+  --surface-2:  #231e18;
+  --border:     #2e2820;
+  --text:       #f0e6cc;
+  --text-dim:   #6b5f4e;
+  --accent:     #e8a020;
+  --accent-glow:rgba(232,160,32,0.18);
+  --motion:     #e85c20;
+  --motion-glow:rgba(232,92,32,0.25);
+  --idle:       #4a9068;
+  --font: 'Cascadia Code','Fira Code',Consolas,'Courier New',monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.frame {
+  width: 100%;
+  max-width: 660px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Header ─────────────────────────────────── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0 0.9rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.wordmark {
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.wordmark strong { color: var(--accent); font-weight: 600; }
+.conn-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.conn-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background 0.4s;
+}
+.conn-dot.ok    { background: var(--idle); box-shadow: 0 0 5px var(--idle); }
+.conn-dot.error { background: var(--motion); }
+
+/* ── Status hero ────────────────────────────── */
+.status-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.8rem 0 2.4rem;
+  position: relative;
+}
+.status-eyebrow {
+  font-size: 0.62rem;
+  letter-spacing: 0.32em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+.status-word {
+  font-size: clamp(3rem, 10vw, 5rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--text-dim);
+  transition: color 0.35s, text-shadow 0.35s;
+}
+.status-word.state-motion {
+  color: var(--motion);
+  text-shadow: 0 0 60px var(--motion-glow), 0 0 120px var(--motion-glow);
+  animation: phosphor-pulse 1.8s ease-in-out infinite;
+}
+.status-word.state-idle { color: var(--idle); text-shadow: none; }
+
+@keyframes phosphor-pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.72; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-word.state-motion { animation: none; }
+}
+
+/* ── Score section ───────────────────────────── */
+.score-section {
+  border-top: 1px solid var(--border);
+  padding: 1.2rem 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.score-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.score-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.28em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.score-value {
+  font-size: 1.6rem;
+  color: var(--text);
+  letter-spacing: 0.03em;
+  transition: color 0.3s;
+}
+.score-value.over { color: var(--motion); }
+
+.bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.bar-pct {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  width: 3.2rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+.bar-outer {
+  flex: 1;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 1px;
+  position: relative;
+  margin-top: 18px;
+}
+.bar-inner {
+  height: 100%;
+  border-radius: 1px;
+  background: var(--accent);
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background 0.3s;
+  max-width: 100%;
+}
+.bar-inner.over { background: var(--motion); }
+.thr-marker {
+  position: absolute;
+  top: -14px;
+  bottom: -4px;
+  width: 1px;
+  background: var(--text-dim);
+  opacity: 0.45;
+  transition: left 0.5s;
+}
+.thr-marker::before {
+  content: 'THR';
+  position: absolute;
+  top: -12px;
+  left: 3px;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.score-sub {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+/* ── History canvas ──────────────────────────── */
+.history-section {
+  border-top: 1px solid var(--border);
+  padding: 1.1rem 0 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.section-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.28em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+#history {
+  width: 100%;
+  height: 72px;
+  display: block;
+  border-radius: 1px;
+}
+
+/* ── Stats row ───────────────────────────────── */
+.stats-row {
+  border-top: 1px solid var(--border);
+  padding: 0.9rem 0 0.6rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+.stat { display: flex; flex-direction: column; gap: 0.3rem; }
+.stat-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.stat-val { font-size: 0.9rem; color: var(--text); }
+
+/* ── Footer ─────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 0.7rem 0 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+}
+
+/* ── Error banner ────────────────────────────── */
+.err-banner {
+  display: none;
+  background: var(--surface-2);
+  border: 1px solid #5c2408;
+  color: var(--motion);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+.err-banner.show { display: block; }
+
+/* ── Threshold control ───────────────────────── */
+.thr-control {
+  border-top: 1px solid var(--border);
+  padding: 0.9rem 0 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.thr-control-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.thr-input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  width: 7rem;
+  border-radius: 2px;
+  outline: none;
+}
+.thr-input:focus { border-color: var(--accent); }
+.thr-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--accent-dim, #6b4a0e);
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+  border-radius: 2px;
+  text-transform: uppercase;
+  transition: background 0.2s;
+}
+.thr-btn:hover { background: #2e2210; }
+.thr-btn:active { background: #3a2a14; }
+.auto-thr-btn {
+  background: var(--surface-2);
+  border: 1px solid #1e3a28;
+  color: var(--idle);
+  font-family: var(--font);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+  border-radius: 2px;
+  text-transform: uppercase;
+  transition: background 0.2s, opacity 0.2s;
+  white-space: nowrap;
+  position: relative;
+}
+.auto-thr-btn:hover:not(:disabled)  { background: #152818; }
+.auto-thr-btn:disabled { opacity: 0.45; cursor: default; }
+.auto-thr-btn.running {
+  border-color: var(--idle);
+  box-shadow: 0 0 6px rgba(74,144,104,0.3);
+}
+.thr-status {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+</style>
+
+<div class="frame">
+
+  <header class="header">
+    <div class="wordmark"><strong>ESPECTRE</strong> / MOTION MONITOR</div>
+    <div class="conn-pill">
+      <div class="conn-dot" id="dot"></div>
+      <span id="conn-txt">--</span>
+    </div>
+  </header>
+
+  <div class="err-banner" id="err"></div>
+
+  <section class="status-hero">
+    <div class="status-eyebrow">Detection Status</div>
+    <div class="status-word" id="status">--</div>
+  </section>
+
+  <section class="score-section">
+    <div class="score-top">
+      <span class="score-label">Movement Score</span>
+      <span class="score-value" id="score-val">--</span>
+    </div>
+    <div class="bar-wrap">
+      <span class="bar-pct" id="bar-pct">--%</span>
+      <div class="bar-outer">
+        <div class="bar-inner" id="bar" style="width:0%"></div>
+        <div class="thr-marker" id="thr-mark" style="left:50%"></div>
+      </div>
+    </div>
+    <div class="score-sub">
+      <span>mvmt: <span id="mvmt-raw">--</span></span>
+      <span>thr: <span id="thr-raw">--</span></span>
+    </div>
+  </section>
+
+  <section class="history-section">
+    <div class="section-label">60s History</div>
+    <canvas id="history"></canvas>
+    <div style="margin-top:12px;border-top:1px solid #333;padding-top:8px">
+      <div style="font-size:0.75em;color:#888;margin-bottom:4px">MOTION EVENTS</div>
+      <div id="event-log" style="max-height:120px;overflow-y:auto;font-family:monospace"></div>
+    </div>
+  </section>
+
+  <div class="stats-row">
+    <div class="stat">
+      <span class="stat-label">Threshold</span>
+      <span class="stat-val" id="s-thr">--</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Score %</span>
+      <span class="stat-val" id="s-pct">--</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Readings</span>
+      <span class="stat-val" id="s-count">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Poll Rate</span>
+      <span class="stat-val">5 Hz</span>
+    </div>
+  </div>
+
+  <div class="thr-control">
+    <span class="thr-control-label">Threshold</span>
+    <input class="thr-input" id="thr-input" type="number" step="0.001" min="0.001" placeholder="0.002">
+    <button class="thr-btn" id="thr-btn">Set</button>
+    <button class="auto-thr-btn" id="auto-thr-btn" title="Stay still for 10s — sets threshold to 3× idle peak">Auto</button>
+    <span class="thr-status" id="thr-status"></span>
+  </div>
+
+  <footer class="footer">
+    <span id="host-label">192.168.12.184</span>
+    <span id="age">--</span>
+  </footer>
+
+</div>
+
+<script>
+const HOST        = 'http://192.168.12.184';
+const POLL        = 300;   // ms between score+motion polls
+const THR_POLL    = 10000; // ms between threshold polls (rarely changes)
+const MAX_H       = 60;
+
+const MAX_LOG = 20;
+const motionLog = [];
+let prevMotion = null;
+
+let buf           = [];
+let thr           = null;
+let lastOk        = null;
+let errCount      = 0;
+let readCount     = 0;
+let canvasW       = 0;
+let canvasH       = 0;
+let autoThrSamples = null;  // non-null while auto-threshold is collecting
+
+const el = id => document.getElementById(id);
+
+function setConn(state) {
+  el('dot').className       = 'conn-dot ' + (state === 'ok' ? 'ok' : 'error');
+  el('conn-txt').textContent = state === 'ok' ? 'ONLINE' : 'OFFLINE';
+}
+function showErr(msg) { el('err').textContent = msg; el('err').classList.add('show'); }
+function hideErr()    { el('err').classList.remove('show'); }
+
+async function get(path) {
+  const r = await fetch(HOST + path, { signal: AbortSignal.timeout(2500) });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+function renderBar(score, threshold) {
+  const cap  = threshold > 0 ? threshold * 2 : 10;
+  const pct  = Math.min((score / cap) * 100, 100);
+  const over = threshold > 0 && score > threshold;
+  el('bar').style.width     = pct + '%';
+  el('bar').className       = 'bar-inner' + (over ? ' over' : '');
+  el('bar-pct').textContent = Math.round(pct) + '%';
+  el('score-val').className = 'score-value' + (over ? ' over' : '');
+}
+
+function drawHistory() {
+  const canvas = el('history');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  if (!W || !H) return;
+
+  // Only reset canvas dimensions when they actually change (avoids full context wipe every frame)
+  if (W !== canvasW || H !== canvasH) {
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvasW = W; canvasH = H;
+  }
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#1a1410';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!buf.length) {
+    ctx.fillStyle = '#2e2820';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('waiting for data…', W / 2, H / 2 + 4);
+    return;
+  }
+
+  ctx.strokeStyle = '#2a2218'; ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75].forEach(f => {
+    ctx.beginPath(); ctx.moveTo(0, H * f); ctx.lineTo(W, H * f); ctx.stroke();
+  });
+
+  let maxVal = 0;
+  for (let i = 0; i < buf.length; i++) if (buf[i] > maxVal) maxVal = buf[i];
+  const peak = thr > 0 ? Math.max(thr * 1.5, maxVal) : (maxVal || 0.001);
+
+  if (thr > 0) {
+    const ty = H - (thr / peak) * H;
+    ctx.strokeStyle = '#8b5a0a'; ctx.setLineDash([3, 5]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, ty); ctx.lineTo(W, ty); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  const slotW = W / MAX_H;
+  const barW  = Math.max(1, slotW - 1);
+  const MIN_BAR = 4;
+  for (let i = 0; i < buf.length; i++) {
+    const bH = Math.max(MIN_BAR, (buf[i] / peak) * H);
+    ctx.fillStyle = (thr > 0 && buf[i] > thr) ? 'rgba(232,92,32,0.85)' : 'rgba(232,160,32,0.7)';
+    ctx.fillRect(i * slotW, H - bH, barW, bH);
+  }
+}
+
+// Poll score + motion — sequential (setTimeout) so polls never overlap
+async function poll() {
+  try {
+    const [scoreRes, motionRes] = await Promise.all([
+      get('/sensor/movement_score').catch(() => null),
+      get('/binary_sensor/motion_detected').catch(() => null),
+    ]);
+
+    errCount = 0;
+    setConn('ok');
+    hideErr();
+    lastOk = Date.now();
+
+    if (scoreRes) {
+      const score = parseFloat(scoreRes.value);
+      if (!isNaN(score)) {
+        buf.push(score); if (buf.length > MAX_H) buf.shift(); readCount++;
+        if (autoThrSamples !== null) autoThrSamples.push(score);
+        el('score-val').textContent = score.toFixed(4);
+        el('mvmt-raw').textContent  = score.toFixed(4);
+        el('s-count').textContent   = readCount;
+        el('s-pct').textContent     = thr ? Math.round(Math.min((score / thr) * 100, 999)) + '%' : '--';
+        renderBar(score, thr || 0.002);
+        drawHistory();
+      }
+    }
+
+    if (motionRes) {
+      const on = motionRes.value === true
+              || motionRes.state === 'True'
+              || motionRes.state === 'ON'
+              || motionRes.state === 'on';
+      el('status').textContent = on ? 'MOTION' : 'IDLE';
+      el('status').className   = 'status-word ' + (on ? 'state-motion' : 'state-idle');
+
+      const motionNow = on;
+      if (prevMotion !== null && motionNow !== prevMotion) {
+        const entry = { t: new Date().toLocaleTimeString(), on: motionNow };
+        motionLog.unshift(entry);
+        if (motionLog.length > MAX_LOG) motionLog.pop();
+        renderLog();
+      }
+      prevMotion = motionNow;
+    }
+
+  } catch (e) {
+    errCount++;
+    if (errCount >= 3) {
+      setConn('error');
+      showErr('Cannot reach ' + HOST + '. Check device is powered and on your WiFi network.');
+    }
+  } finally {
+    setTimeout(poll, POLL); // schedule next poll only after current one finishes
+  }
+}
+
+// Poll threshold separately at a much lower rate
+async function pollThreshold() {
+  try {
+    const thrRes = await get('/number/threshold');
+    if (thrRes) {
+      const t = parseFloat(thrRes.value);
+      if (!isNaN(t)) {
+        thr = t;
+        el('thr-raw').textContent = thr.toFixed(4);
+        el('s-thr').textContent   = thr.toFixed(3);
+        if (!el('thr-input').value) el('thr-input').value = thr.toFixed(3);
+      }
+    }
+  } catch (_) {}
+  setTimeout(pollThreshold, THR_POLL);
+}
+
+// Age ticker at 1s — no need for 100ms here
+setInterval(() => {
+  if (!lastOk) return;
+  const s = ((Date.now() - lastOk) / 1000).toFixed(1);
+  el('age').textContent = 'updated ' + s + 's ago';
+}, 1000);
+
+new ResizeObserver(drawHistory).observe(el('history'));
+
+function renderLog() {
+  const el2 = document.getElementById('event-log');
+  if (!el2) return;
+  el2.innerHTML = motionLog.map(e =>
+    '<div style="color:' + (e.on ? '#4ade80' : '#fb923c') + ';font-size:0.8em;padding:2px 0">' +
+    e.t + ' — MOTION ' + (e.on ? 'ON' : 'OFF') + '</div>'
+  ).join('');
+}
+
+// Threshold control
+async function setThreshold(val) {
+  const status = el('thr-status');
+  status.textContent = 'setting…';
+  try {
+    const r = await fetch(`${HOST}/number/threshold/set?value=${val}`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    // ESPHome v1 may return JSON or empty body — handle both
+    let newVal = val;
+    try {
+      const d = await r.json();
+      if (d && d.value !== undefined) newVal = parseFloat(d.value);
+    } catch (_) { /* non-JSON response is fine — use the value we sent */ }
+    thr = newVal;
+    el('thr-raw').textContent = thr.toFixed(4);
+    el('s-thr').textContent   = thr.toFixed(3);
+    el('thr-input').value     = thr.toFixed(3);
+    status.textContent = 'set ✓';
+    setTimeout(() => { status.textContent = ''; }, 2000);
+  } catch(e) {
+    if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+      status.textContent = 'timed out — board unreachable';
+    } else {
+      status.textContent = 'error: ' + e.message;
+    }
+  }
+}
+
+el('thr-btn').addEventListener('click', () => {
+  const v = parseFloat(el('thr-input').value);
+  if (!isNaN(v) && v > 0) setThreshold(v);
+});
+
+el('thr-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const v = parseFloat(el('thr-input').value);
+    if (!isNaN(v) && v > 0) setThreshold(v);
+  }
+});
+
+// Auto-threshold: two-phase calibration
+//   Phase 1 (10s): stay still  → measures idle peak (95th pct)
+//   Phase 2 (5s):  wave hand   → measures motion floor (10th pct)
+//   Threshold = idle_peak + 30% of gap → sensitive but stable
+async function runAutoThreshold() {
+  const btn    = el('auto-thr-btn');
+  const status = el('thr-status');
+  if (btn.disabled) return;
+
+  btn.disabled = true;
+  btn.classList.add('running');
+
+  // ── Phase 1: idle ──────────────────────────────
+  autoThrSamples = [];
+  for (let s = 10; s > 0; s--) {
+    status.textContent = `stay still… ${s}s`;
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  const idleSamples = [...autoThrSamples];
+
+  // ── Phase 2: motion ────────────────────────────
+  autoThrSamples = [];
+  for (let s = 5; s > 0; s--) {
+    status.textContent = `now wave your hand… ${s}s`;
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  const motionSamples = [...autoThrSamples];
+
+  autoThrSamples = null;
+  btn.classList.remove('running');
+  btn.disabled = false;
+
+  if (idleSamples.length < 5 || motionSamples.length < 3) {
+    status.textContent = 'too few samples — try again';
+    return;
+  }
+
+  // Idle peak: 95th percentile (handles occasional noise)
+  const idleSorted = [...idleSamples].sort((a, b) => a - b);
+  const idlePeak   = idleSorted[Math.floor(idleSorted.length * 0.95)];
+
+  // Motion floor: 10th percentile (weakest motion we must detect)
+  const motionSorted = [...motionSamples].sort((a, b) => a - b);
+  const motionFloor  = motionSorted[Math.floor(motionSorted.length * 0.10)];
+
+  let newThr;
+  if (motionFloor > idlePeak * 1.1) {
+    // Good separation — set threshold 30% into the gap
+    const gap = motionFloor - idlePeak;
+    newThr = parseFloat((idlePeak + gap * 0.30).toFixed(4));
+  } else {
+    // Poor separation — fall back to idle peak × 1.5 and warn
+    // (tip: calibrate from 1–2 m away, not touching the device)
+    newThr = parseFloat((idlePeak * 1.5).toFixed(4));
+    status.textContent = `weak signal — set to ${newThr.toFixed(3)} (calibrate from 1–2 m away for better results)`;
+    el('thr-input').value = newThr.toFixed(3);
+    await setThreshold(newThr);
+    return;
+  }
+
+  el('thr-input').value = newThr.toFixed(3);
+  await setThreshold(newThr);
+}
+
+el('auto-thr-btn').addEventListener('click', runAutoThreshold);
+
+poll();
+pollThreshold();
+</script>
